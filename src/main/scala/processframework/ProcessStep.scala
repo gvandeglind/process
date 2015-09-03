@@ -29,7 +29,7 @@ trait ProcessStep[S] {
 
   def retryInterval: Duration = Duration.Inf
 
-  final def isCompleted = promise.isCompleted
+  final def isCompleted = isStepCompleted()
   final def markDone(): Unit = promise.trySuccess(())
   final def markDone(state: S): S = {
     markDone()
@@ -40,6 +40,7 @@ trait ProcessStep[S] {
   final def onCompleteAsync(completeFn: ⇒ Unit)(implicit executionContext: ExecutionContext): Unit = promise.future.foreach(_ ⇒ completeFn)
   final def ~>(next: ProcessStep[S]*)(implicit context: ActorContext): ProcessStep[S] = new Chain(this, next: _*)
 
+  private[processframework] def isStepCompleted() = promise.isCompleted
   private[processframework] def abort(): Unit = promise.tryFailure(new RuntimeException("Process aborted"))
   private[processframework] def run()(implicit process: ActorRef, executionContext: ExecutionContext, classTag: ClassTag[S]): Future[Unit] = runImpl
   private[processframework] def handleUpdateState: UpdateFunction = if (isCompleted) PartialFunction.empty[Process.Event, S ⇒ S] else updateState
